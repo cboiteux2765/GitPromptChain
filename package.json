@@ -1,0 +1,35 @@
+{
+  "name": "gitpromptchain",
+  "version": "1.0.0",
+  "description": "A tool for logging LLM conversation history as part of each commit",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "gitpromptchain": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && node dist/cli.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "git",
+    "llm",
+    "prompt",
+    "conversation",
+    "mcp",
+    "ai",
+    "version-control"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@types/uuid": "^10.0.0",
+    "simple-git": "^3.30.0",
+    "uuid": "^13.0.0"
+  }
+}
