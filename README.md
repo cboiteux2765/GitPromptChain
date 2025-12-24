@@ -1,6 +1,6 @@
 # GitPromptChain
 
-A lightweight tool for tracking LLM conversation history with your Git commits.
+A lightweight tool for logging LLM conversation history as part of each git commit to help developers prompt better and learn prompting patterns.
 
 ## Overview
 
