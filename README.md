@@ -41,6 +41,40 @@ The CLI provides an interactive menu to:
 4. View saved chains
 5. List all chains
 
+### VS Code Extension
+
+GitPromptChain is also available as a VS Code extension with integrated Chat API support.
+
+**Installation:**
+1. Open the extension folder: `vscode-extension/`
+2. Run `npm install`
+3. Press `F5` to launch the extension in debug mode
+
+**Usage in Chat:**
+
+Use the `@chain` participant in VS Code Chat:
+
+- **Start a new chain:**
+  ```
+  @chain /new Feature: User authentication
+  ```
+
+- **Add a prompt (auto-saves with file changes):**
+  ```
+  @chain How do I implement JWT authentication?
+  ```
+
+- **View saved chains:**
+  ```
+  @chain /view
+  ```
+
+The extension automatically:
+- Captures file diffs when you ask questions
+- Saves chains with commit information
+- Tracks git branch and commit SHA
+- Stores everything in `.gitpromptchain/` directory
+
 ### Programmatic Usage
 
 ```typescript
