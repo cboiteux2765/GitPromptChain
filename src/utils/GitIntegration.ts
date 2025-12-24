@@ -1,7 +1,3 @@
-/**
- * Git integration utilities for capturing file diffs and commit information
- */
-
 import simpleGit, { SimpleGit, DiffResult } from 'simple-git';
 import { FileDiff } from '../models/PromptChain';
 
@@ -14,25 +10,24 @@ export class GitIntegration {
     this.git = simpleGit(repoPath);
   }
 
-  /**
-   * Get current branch name
-   */
   async getCurrentBranch(): Promise<string> {
-    const branch = await this.git.revparse(['--abbrev-ref', 'HEAD']);
-    return branch.trim();
+    try {
+      const branch = await this.git.revparse(['--abbrev-ref', 'HEAD']);
+      return branch.trim();
+    } catch (error) {
+      return 'master';
+    }
   }
 
-  /**
-   * Get the last commit SHA
-   */
   async getLastCommitSha(): Promise<string> {
-    const log = await this.git.log(['-1']);
-    return log.latest?.hash || '';
+    try {
+      const log = await this.git.log(['-1']);
+      return log.latest?.hash || '';
+    } catch (error) {
+      return '';
+    }
   }
 
-  /**
-   * Get file diffs for uncommitted changes
-   */
   async getUncommittedDiffs(): Promise<FileDiff[]> {
     const diffs: FileDiff[] = [];
 
@@ -82,10 +77,20 @@ export class GitIntegration {
     const diffs: FileDiff[] = [];
 
     try {
-      const diffSummary = await this.git.diffSummary([`${commitSha}~1`, commitSha]);
+      let diffSummary;
+      try {
+        diffSummary = await this.git.diffSummary([`${commitSha}~1`, commitSha]);
+      } catch (parentError) {
+        diffSummary = await this.git.diffSummary(['4b825dc642cb6eb9a060e54bf8d69288fbee4904', commitSha]);
+      }
       
       for (const file of diffSummary.files) {
-        const diff = await this.git.diff([`${commitSha}~1`, commitSha, '--', file.file]);
+        let diff;
+        try {
+          diff = await this.git.diff([`${commitSha}~1`, commitSha, '--', file.file]);
+        } catch (error) {
+          diff = await this.git.diff(['4b825dc642cb6eb9a060e54bf8d69288fbee4904', commitSha, '--', file.file]);
+        }
         
         let changeType: 'added' | 'modified' | 'deleted' = 'modified';
         let linesAdded = 0;
@@ -101,7 +106,6 @@ export class GitIntegration {
         if (file.binary) {
           changeType = 'modified';
         } else {
-          // Determine change type based on insertions/deletions
           if (linesAdded > 0 && linesDeleted === 0) {
             changeType = 'added';
           } else if (linesAdded === 0 && linesDeleted > 0) {
@@ -125,9 +129,6 @@ export class GitIntegration {
     }
   }
 
-  /**
-   * Parse git status working directory indicator to change type
-   */
   private getChangeType(indicator: string): 'added' | 'modified' | 'deleted' | null {
     switch (indicator) {
       case 'M':
@@ -142,9 +143,6 @@ export class GitIntegration {
     }
   }
 
-  /**
-   * Parse diff output to extract line statistics
-   */
   private parseDiffStats(diff: string): { added: number; deleted: number } {
     const lines = diff.split('\n');
     let added = 0;
@@ -161,9 +159,6 @@ export class GitIntegration {
     return { added, deleted };
   }
 
-  /**
-   * Create a commit with message
-   */
   async commit(message: string): Promise<string> {
     await this.git.add('.');
     await this.git.commit(message);

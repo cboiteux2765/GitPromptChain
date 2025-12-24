@@ -1,22 +1,13 @@
-/**
- * Core PromptChain manager for capturing and storing prompt chains
- */
-
 import { v4 as uuidv4 } from 'uuid';
 import { PromptChain, PromptStep, PromptChainDocument, PromptChainMetadata, FileDiff } from '../models/PromptChain';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 export interface PromptChainManagerConfig {
-  /** Directory to store prompt chain data */
   storageDir: string;
-  /** Repository path */
   repoPath: string;
 }
 
-/**
- * Manages prompt chain creation, storage, and retrieval
- */
 export class PromptChainManager {
   private config: PromptChainManagerConfig;
   private currentChain: PromptChain | null = null;
@@ -25,9 +16,6 @@ export class PromptChainManager {
     this.config = config;
   }
 
-  /**
-   * Initialize storage directory
-   */
   async initialize(): Promise<void> {
     try {
       await fs.mkdir(this.config.storageDir, { recursive: true });
@@ -37,9 +25,6 @@ export class PromptChainManager {
     }
   }
 
-  /**
-   * Start a new prompt chain
-   */
   async startChain(summary?: string): Promise<PromptChain> {
     this.currentChain = {
       chainId: uuidv4(),
@@ -50,9 +35,6 @@ export class PromptChainManager {
     return this.currentChain;
   }
 
-  /**
-   * Add a prompt step to the current chain
-   */
   async addStep(prompt: string, response: string, fileDiffs?: FileDiff[]): Promise<PromptStep> {
     if (!this.currentChain) {
       throw new Error('No active prompt chain. Call startChain() first.');
@@ -70,9 +52,6 @@ export class PromptChainManager {
     return step;
   }
 
-  /**
-   * End the current chain and associate with commit
-   */
   async endChain(commitSha?: string, branch?: string): Promise<PromptChain | null> {
     if (!this.currentChain) {
       return null;
@@ -88,9 +67,6 @@ export class PromptChainManager {
     return chain;
   }
 
-  /**
-   * Save a prompt chain to disk
-   */
   async saveChain(chain: PromptChain): Promise<string> {
     const document: PromptChainDocument = {
       metadata: {
@@ -113,9 +89,6 @@ export class PromptChainManager {
     return filepath;
   }
 
-  /**
-   * Load a prompt chain from disk
-   */
   async loadChain(chainId: string): Promise<PromptChainDocument | null> {
     const filename = `chain-${chainId}.json`;
     const filepath = path.join(this.config.storageDir, filename);
@@ -129,9 +102,6 @@ export class PromptChainManager {
     }
   }
 
-  /**
-   * List all stored prompt chains
-   */
   async listChains(): Promise<string[]> {
     try {
       const files = await fs.readdir(this.config.storageDir);
@@ -144,9 +114,6 @@ export class PromptChainManager {
     }
   }
 
-  /**
-   * Get the current active chain
-   */
   getCurrentChain(): PromptChain | null {
     return this.currentChain;
   }

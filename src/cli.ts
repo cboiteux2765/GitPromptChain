@@ -1,9 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * CLI interface for GitPromptChain
- */
-
 import { PromptChainManager } from './core/PromptChainManager';
 import { GitIntegration } from './utils/GitIntegration';
 import { PromptChainVisualizer } from './core/PromptChainVisualizer';
@@ -95,7 +91,7 @@ class GitPromptChainCLI {
   private async startNewChain(): Promise<void> {
     this.rl.question('Enter a summary for this chain (optional): ', async (summary) => {
       const chain = await this.manager.startChain(summary || undefined);
-      console.log(`\n✅ Started new prompt chain: ${chain.chainId}`);
+      console.log(`\n[OK] Started new prompt chain: ${chain.chainId}`);
       await this.showMenu();
     });
   }
@@ -103,7 +99,7 @@ class GitPromptChainCLI {
   private async addPromptStep(): Promise<void> {
     const current = this.manager.getCurrentChain();
     if (!current) {
-      console.log('\n❌ No active chain. Please start a new chain first.');
+      console.log('\n[ERROR] No active chain. Please start a new chain first.');
       await this.showMenu();
       return;
     }
@@ -118,7 +114,7 @@ class GitPromptChainCLI {
     const fileDiffs = await this.gitIntegration.getUncommittedDiffs();
 
     await this.manager.addStep(prompt, response, fileDiffs);
-    console.log(`\n✅ Added step to chain. Files changed: ${fileDiffs.length}`);
+    console.log(`\n[OK] Added step to chain. Files changed: ${fileDiffs.length}`);
     
     await this.showMenu();
   }
@@ -126,7 +122,7 @@ class GitPromptChainCLI {
   private async endAndSaveChain(): Promise<void> {
     const current = this.manager.getCurrentChain();
     if (!current) {
-      console.log('\n❌ No active chain to end.');
+      console.log('\n[ERROR] No active chain to end.');
       await this.showMenu();
       return;
     }
@@ -138,13 +134,13 @@ class GitPromptChainCLI {
       const chain = await this.manager.endChain(commitSha, branch);
       if (chain) {
         const filepath = await this.manager.saveChain(chain);
-        console.log(`\n✅ Chain saved successfully!`);
+        console.log(`\n[OK] Chain saved successfully!`);
         console.log(`   Chain ID: ${chain.chainId}`);
         console.log(`   Steps: ${chain.steps.length}`);
         console.log(`   File: ${filepath}`);
       }
     } catch (error) {
-      console.error('\n❌ Failed to save chain:', error);
+      console.error('\n[ERROR] Failed to save chain:', error);
     }
 
     await this.showMenu();
@@ -156,7 +152,7 @@ class GitPromptChainCLI {
       if (document) {
         console.log('\n' + PromptChainVisualizer.visualizeChain(document));
       } else {
-        console.log('\n❌ Chain not found.');
+        console.log('\n[ERROR] Chain not found.');
       }
       await this.showMenu();
     });
@@ -166,14 +162,14 @@ class GitPromptChainCLI {
     const chains = await this.manager.listChains();
     
     if (chains.length === 0) {
-      console.log('\n📋 No chains found.');
+      console.log('\nNo chains found.');
     } else {
-      console.log(`\n📋 Found ${chains.length} chain(s):\n`);
+      console.log(`\nFound ${chains.length} chain(s):\n`);
       for (const chainId of chains) {
         const doc = await this.manager.loadChain(chainId);
         if (doc) {
           const summary = PromptChainVisualizer.generateSummary(doc.chain);
-          console.log(`  • ${chainId}`);
+          console.log(`  - ${chainId}`);
           console.log(`    ${summary}`);
         }
       }
@@ -206,7 +202,6 @@ class GitPromptChainCLI {
   }
 }
 
-// Main execution
 async function main() {
   const repoPath = process.cwd();
   const storageDir = path.join(repoPath, '.gitpromptchain');
@@ -220,7 +215,6 @@ async function main() {
   await cli.start();
 }
 
-// Run if executed directly
 if (require.main === module) {
   main().catch(error => {
     console.error('Fatal error:', error);

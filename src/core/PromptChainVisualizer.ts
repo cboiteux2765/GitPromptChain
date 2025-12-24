@@ -1,23 +1,14 @@
-/**
- * Visualization utilities for displaying prompt chains
- */
-
 import { PromptChain, PromptStep, FileDiff, PromptChainDocument } from '../models/PromptChain';
 
 export class PromptChainVisualizer {
-  /**
-   * Generate a text-based visualization of a prompt chain
-   */
   static visualizeChain(document: PromptChainDocument): string {
     const { chain, metadata } = document;
     let output = '';
 
-    // Header
     output += '═══════════════════════════════════════════════════════════════\n';
     output += '                    PROMPT CHAIN VISUALIZATION                  \n';
     output += '═══════════════════════════════════════════════════════════════\n\n';
 
-    // Metadata
     output += `Chain ID:     ${chain.chainId}\n`;
     output += `Repository:   ${metadata.repository?.name || 'Unknown'}\n`;
     output += `Started:      ${chain.startTime}\n`;
@@ -40,7 +31,6 @@ export class PromptChainVisualizer {
     output += '\n';
     output += '───────────────────────────────────────────────────────────────\n\n';
 
-    // Steps
     chain.steps.forEach((step, index) => {
       output += this.visualizeStep(step, index + 1);
       output += '\n';
@@ -53,9 +43,6 @@ export class PromptChainVisualizer {
     return output;
   }
 
-  /**
-   * Visualize a single prompt step
-   */
   private static visualizeStep(step: PromptStep, stepNumber: number): string {
     let output = '';
 
@@ -64,24 +51,21 @@ export class PromptChainVisualizer {
     output += `│ ID: ${step.id}\n`;
     output += `└──────────────────────────────────────────────────────────────\n\n`;
 
-    // Prompt
-    output += '📝 PROMPT:\n';
+    output += 'PROMPT:\n';
     output += this.indentText(step.prompt, '  ');
     output += '\n\n';
 
-    // Response
-    output += '💬 RESPONSE:\n';
+    output += 'RESPONSE:\n';
     output += this.indentText(step.response, '  ');
     output += '\n\n';
 
-    // File diffs
     if (step.fileDiffs && step.fileDiffs.length > 0) {
-      output += `📁 FILES CHANGED (${step.fileDiffs.length}):\n`;
+      output += `FILES CHANGED (${step.fileDiffs.length}):\n`;
       step.fileDiffs.forEach(diff => {
         output += this.visualizeFileDiff(diff);
       });
     } else {
-      output += '📁 FILES CHANGED: None\n';
+      output += 'FILES CHANGED: None\n';
     }
 
     output += '───────────────────────────────────────────────────────────────\n';
@@ -89,22 +73,19 @@ export class PromptChainVisualizer {
     return output;
   }
 
-  /**
-   * Visualize a file diff
-   */
   private static visualizeFileDiff(diff: FileDiff): string {
     let output = '';
 
-    const icon = diff.changeType === 'added' ? '➕' : 
-                 diff.changeType === 'deleted' ? '➖' : '✏️';
+    const prefix = diff.changeType === 'added' ? '[+]' : 
+                   diff.changeType === 'deleted' ? '[-]' : '[*]';
     
-    output += `  ${icon} ${diff.filePath} (${diff.changeType})\n`;
-    output += `     +${diff.linesAdded} -${diff.linesDeleted}\n`;
+    output += `  ${prefix} ${diff.filePath} (${diff.changeType})\n`;
+    output += `      +${diff.linesAdded} -${diff.linesDeleted}\n`;
 
     if (diff.diff && diff.diff.length > 0) {
       const preview = this.getDiffPreview(diff.diff, 5);
       if (preview) {
-        output += this.indentText(preview, '     ');
+        output += this.indentText(preview, '      ');
         output += '\n';
       }
     }
@@ -112,33 +93,23 @@ export class PromptChainVisualizer {
     return output;
   }
 
-  /**
-   * Get a preview of the diff (first N lines)
-   */
   private static getDiffPreview(diff: string, maxLines: number): string {
     const lines = diff.split('\n');
     const relevantLines = lines.filter(line => 
-      line.startsWith('+') || line.startsWith('-') || 
-      line.startsWith('@@')
+      line.startsWith('+') || line.startsWith('-') || line.startsWith('@@')
     );
     
     const preview = relevantLines.slice(0, maxLines).join('\n');
     if (relevantLines.length > maxLines) {
-      return preview + '\n     ... (diff truncated)';
+      return preview + '\n      ... (diff truncated)';
     }
     return preview;
   }
 
-  /**
-   * Indent text by a given prefix
-   */
   private static indentText(text: string, indent: string): string {
     return text.split('\n').map(line => indent + line).join('\n');
   }
 
-  /**
-   * Format duration in human-readable format
-   */
   private static formatDuration(ms: number): string {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -153,16 +124,10 @@ export class PromptChainVisualizer {
     }
   }
 
-  /**
-   * Generate a JSON representation (for debugging or API responses)
-   */
   static toJSON(document: PromptChainDocument): string {
     return JSON.stringify(document, null, 2);
   }
 
-  /**
-   * Generate a summary of the chain
-   */
   static generateSummary(chain: PromptChain): string {
     const totalFiles = new Set<string>();
     let totalAdded = 0;
