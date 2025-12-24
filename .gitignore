@@ -18,6 +18,9 @@ coverage/
 
 # IDE
 .vscode/
+
+# VS Code Extension (development folder)
+vscode-extension/
 .idea/
 *.swp
 *.swo

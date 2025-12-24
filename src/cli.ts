@@ -47,36 +47,42 @@ class GitPromptChainCLI {
   }
 
   private async showMenu(): Promise<void> {
-    console.log('\nWhat would you like to do?');
-    console.log('1. Start a new prompt chain');
-    console.log('2. Add a prompt step to current chain');
-    console.log('3. End current chain and save');
-    console.log('4. View a saved chain');
-    console.log('5. List all chains');
-    console.log('6. Exit\n');
+    const current = this.manager.getCurrentChain();
+    
+    console.log('\n' + '═'.repeat(62));
+    console.log('What would you like to do?');
+    
+    if (current) {
+      console.log(`\n📝 Active chain: ${current.chainId}`);
+      console.log(`   Steps: ${current.steps.length}`);
+      console.log('');
+    }
+    
+    console.log('start   - Start a new prompt chain');
+    console.log('add     - Add a prompt step to current chain');
+    console.log('view    - View a saved chain');
+    console.log('exit    - Exit\n');
 
-    this.rl.question('Enter your choice (1-6): ', async (choice) => {
-      await this.handleMenuChoice(choice.trim());
+    this.rl.question('Enter your choice: ', async (choice) => {
+      await this.handleMenuChoice(choice.trim().toLowerCase());
     });
   }
 
   private async handleMenuChoice(choice: string): Promise<void> {
     switch (choice) {
+      case 'start':
       case '1':
         await this.startNewChain();
         break;
+      case 'add':
       case '2':
         await this.addPromptStep();
         break;
-      case '3':
-        await this.endAndSaveChain();
-        break;
+      case 'view':
       case '4':
         await this.viewChain();
         break;
-      case '5':
-        await this.listChains();
-        break;
+      case 'exit':
       case '6':
         console.log('\nGoodbye!');
         this.rl.close();
@@ -91,7 +97,7 @@ class GitPromptChainCLI {
   private async startNewChain(): Promise<void> {
     this.rl.question('Enter a summary for this chain (optional): ', async (summary) => {
       const chain = await this.manager.startChain(summary || undefined);
-      console.log(`\n[OK] Started new prompt chain: ${chain.chainId}`);
+      console.log(`\n✅ Started new prompt chain: ${chain.chainId}`);
       await this.showMenu();
     });
   }
@@ -99,105 +105,99 @@ class GitPromptChainCLI {
   private async addPromptStep(): Promise<void> {
     const current = this.manager.getCurrentChain();
     if (!current) {
-      console.log('\n[ERROR] No active chain. Please start a new chain first.');
+      console.log('\nNo active chain. Please start a new chain first.');
       await this.showMenu();
       return;
     }
 
-    console.log('\nEnter your prompt (press Enter twice to finish):');
-    const prompt = await this.readMultilineInput();
-
-    console.log('\nEnter the response (press Enter twice to finish):');
-    const response = await this.readMultilineInput();
-
-    console.log('\nCapturing file diffs...');
-    const fileDiffs = await this.gitIntegration.getUncommittedDiffs();
-
-    await this.manager.addStep(prompt, response, fileDiffs);
-    console.log(`\n[OK] Added step to chain. Files changed: ${fileDiffs.length}`);
-    
-    await this.showMenu();
-  }
-
-  private async endAndSaveChain(): Promise<void> {
-    const current = this.manager.getCurrentChain();
-    if (!current) {
-      console.log('\n[ERROR] No active chain to end.');
-      await this.showMenu();
-      return;
-    }
-
-    try {
-      const branch = await this.gitIntegration.getCurrentBranch();
-      const commitSha = await this.gitIntegration.getLastCommitSha();
-      
-      const chain = await this.manager.endChain(commitSha, branch);
-      if (chain) {
-        const filepath = await this.manager.saveChain(chain);
-        console.log(`\n[OK] Chain saved successfully!`);
-        console.log(`   Chain ID: ${chain.chainId}`);
-        console.log(`   Steps: ${chain.steps.length}`);
-        console.log(`   File: ${filepath}`);
+    this.rl.question('\nEnter your prompt: ', async (prompt) => {
+      if (!prompt.trim()) {
+        console.log('Prompt cannot be empty.');
+        await this.showMenu();
+        return;
       }
-    } catch (error) {
-      console.error('\n[ERROR] Failed to save chain:', error);
-    }
 
-    await this.showMenu();
-  }
+      try {
+        // Get current git state
+        const currentBranch = await this.gitIntegration.getCurrentBranch();
+        const commitSha = await this.gitIntegration.getLastCommitSha();
+        
+        // Capture file diffs as response
+        const fileDiffs = await this.gitIntegration.getUncommittedDiffs();
+        const response = fileDiffs.length > 0
+          ? `Applied changes to ${fileDiffs.length} file(s):\n${fileDiffs.map(d => `  - ${d.filePath}: ${d.linesAdded} additions, ${d.linesDeleted} deletions`).join('\n')}`
+          : '[No file changes detected]';
 
-  private async viewChain(): Promise<void> {
-    this.rl.question('Enter chain ID: ', async (chainId) => {
-      const document = await this.manager.loadChain(chainId.trim());
-      if (document) {
-        console.log('\n' + PromptChainVisualizer.visualizeChain(document));
-      } else {
-        console.log('\n[ERROR] Chain not found.');
+        // Add step to chain
+        await this.manager.addStep(prompt, response, fileDiffs);
+        
+        // Auto-save the chain
+        const updatedChain = await this.manager.endChain(commitSha, currentBranch);
+        if (updatedChain) {
+          await this.manager.saveChain(updatedChain);
+
+          console.log(`\n✅ Step added and saved!`);
+          console.log(`   Chain: ${current.chainId}`);
+          console.log(`   Total steps: ${updatedChain.steps.length}`);
+        }
+        
+        await this.showMenu();
+      } catch (error) {
+        console.error('Error adding step:', error instanceof Error ? error.message : error);
+        await this.showMenu();
       }
-      await this.showMenu();
     });
   }
 
-  private async listChains(): Promise<void> {
+  private async viewChain(): Promise<void> {
     const chains = await this.manager.listChains();
     
     if (chains.length === 0) {
       console.log('\nNo chains found.');
-    } else {
-      console.log(`\nFound ${chains.length} chain(s):\n`);
-      for (const chainId of chains) {
-        const doc = await this.manager.loadChain(chainId);
-        if (doc) {
-          const summary = PromptChainVisualizer.generateSummary(doc.chain);
-          console.log(`  - ${chainId}`);
-          console.log(`    ${summary}`);
-        }
+      await this.showMenu();
+      return;
+    }
+
+    console.log(`\nFound ${chains.length} chain(s):\n`);
+    const chainDocs: Array<{ id: string; doc: any }> = [];
+    
+    for (let i = 0; i < chains.length; i++) {
+      const chainId = chains[i] || '';
+      if (!chainId) continue;
+      
+      const doc = await this.manager.loadChain(chainId);
+      if (doc) {
+        chainDocs.push({ id: chainId, doc });
+        const summary = PromptChainVisualizer.generateSummary(doc.chain);
+        console.log(`  ${i + 1}. ${summary}`);
+        console.log(`     ID: ${chainId}`);
       }
     }
 
-    await this.showMenu();
-  }
+    this.rl.question('\nEnter chain number or ID to view (or press Enter to go back): ', async (input) => {
+      if (!input.trim()) {
+        await this.showMenu();
+        return;
+      }
 
-  private readMultilineInput(): Promise<string> {
-    return new Promise((resolve) => {
-      const lines: string[] = [];
-      let emptyLineCount = 0;
+      let selectedChain = null;
+      const inputNum = parseInt(input.trim(), 10);
+      
+      // Check if input is a number (1-based index)
+      if (!isNaN(inputNum) && inputNum > 0 && inputNum <= chainDocs.length) {
+        selectedChain = chainDocs[inputNum - 1];
+      } else {
+        // Try to find by ID
+        selectedChain = chainDocs.find(c => c.id === input.trim());
+      }
 
-      const onLine = (line: string) => {
-        if (line.trim() === '') {
-          emptyLineCount++;
-          if (emptyLineCount >= 2) {
-            this.rl.removeListener('line', onLine);
-            resolve(lines.join('\n'));
-            return;
-          }
-        } else {
-          emptyLineCount = 0;
-        }
-        lines.push(line);
-      };
-
-      this.rl.on('line', onLine);
+      if (selectedChain) {
+        console.log('\n' + PromptChainVisualizer.visualizeChain(selectedChain.doc));
+      } else {
+        console.log('\nChain not found.');
+      }
+      
+      await this.showMenu();
     });
   }
 }
