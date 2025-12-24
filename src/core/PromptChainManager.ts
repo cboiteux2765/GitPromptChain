@@ -4,15 +4,12 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { PromptChain, PromptStep, PromptChainDocument, PromptChainMetadata, FileDiff } from '../models/PromptChain';
-import { MCPConversationProvider } from '../mcp/MCPProvider';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 export interface PromptChainManagerConfig {
   /** Directory to store prompt chain data */
   storageDir: string;
-  /** MCP provider for conversation retrieval (optional) */
-  mcpProvider?: MCPConversationProvider;
   /** Repository path */
   repoPath: string;
 }
@@ -71,41 +68,6 @@ export class PromptChainManager {
 
     this.currentChain.steps.push(step);
     return step;
-  }
-
-  /**
-   * Attempt to retrieve conversation history from MCP server
-   */
-  async importFromMCP(sessionId?: string): Promise<boolean> {
-    if (!this.config.mcpProvider) {
-      console.log('No MCP provider configured');
-      return false;
-    }
-
-    try {
-      const supported = await this.config.mcpProvider.supportsConversationHistory();
-      if (!supported) {
-        console.log('MCP server does not support conversation history retrieval');
-        return false;
-      }
-
-      const history = await this.config.mcpProvider.getConversationHistory(sessionId);
-      if (!history || history.length === 0) {
-        console.log('No conversation history available from MCP');
-        return false;
-      }
-
-      if (!this.currentChain) {
-        await this.startChain('Imported from MCP');
-      }
-
-      this.currentChain!.steps = history;
-      console.log(`Imported ${history.length} steps from MCP server`);
-      return true;
-    } catch (error) {
-      console.error('Failed to import from MCP:', error);
-      return false;
-    }
   }
 
   /**

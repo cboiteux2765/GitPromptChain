@@ -1,24 +1,18 @@
 # GitPromptChain
 
-A tool for logging LLM conversation history as part of each commit, helping you visualize the chain of prompts, answers, and file diffs that led to your final result.
+A lightweight tool for tracking LLM conversation history with your Git commits.
 
 ## Overview
 
-GitPromptChain helps developers track and visualize how they use LLM conversations to evolve their code. By logging prompts, responses, and associated file changes, you can:
-
-- **Learn from your prompting patterns** - See what prompts led to successful outcomes
-- **Debug your workflow** - Understand how a series of prompts led to a particular result
-- **Document AI-assisted development** - Keep a record of AI contributions to your codebase
-- **Improve future prompts** - Analyze past interactions to refine your approach
+GitPromptChain helps developers visualize and understand the chain of prompts, responses, and code changes in AI-assisted development workflows.
 
 ## Features
 
 - 📝 **Prompt Chain Tracking** - Log sequences of prompts and responses
 - 📁 **File Diff Integration** - Associate code changes with each prompt step
 - 🔗 **Git Integration** - Link prompt chains to commits and branches
-- 📊 **Visualization** - Beautiful terminal output to review prompt chains
-- 🔌 **MCP Support** - Structure for future MCP server integration
-- 💾 **Persistent Storage** - JSON-based storage for all prompt chains
+- 📊 **Visualization** - Beautiful terminal output to review chains
+- 💾 **JSON Storage** - Simple, portable storage format
 
 ## Installation
 
@@ -36,16 +30,8 @@ npm install -g gitpromptchain
 
 ### CLI Usage
 
-Start the interactive CLI:
-
 ```bash
 gitpromptchain
-```
-
-Or if installed locally:
-
-```bash
-npm run start
 ```
 
 The CLI provides an interactive menu to:
@@ -58,77 +44,37 @@ The CLI provides an interactive menu to:
 ### Programmatic Usage
 
 ```typescript
-import { PromptChainManager, GitIntegration, createMCPProvider } from 'gitpromptchain';
+import { PromptChainManager, GitIntegration } from 'gitpromptchain';
 
-// Initialize the manager
+// Initialize
 const manager = new PromptChainManager({
   storageDir: './.gitpromptchain',
-  repoPath: process.cwd(),
-  mcpProvider: createMCPProvider({ enabled: false })
+  repoPath: process.cwd()
 });
 
 await manager.initialize();
 
-// Start a new chain
-const chain = await manager.startChain('Implementing authentication feature');
+// Create and track a chain
+const chain = await manager.startChain('Feature: User authentication');
 
-// Get file diffs
-const gitIntegration = new GitIntegration(process.cwd());
-const fileDiffs = await gitIntegration.getUncommittedDiffs();
+const git = new GitIntegration(process.cwd());
+const fileDiffs = await git.getUncommittedDiffs();
 
-// Add a step
 await manager.addStep(
-  'How do I implement JWT authentication in Express?',
+  'How do I implement JWT authentication?',
   'Here is how to implement JWT auth...',
   fileDiffs
 );
 
-// End and save the chain
-const branch = await gitIntegration.getCurrentBranch();
-const commitSha = await gitIntegration.getLastCommitSha();
-const completedChain = await manager.endChain(commitSha, branch);
-
-if (completedChain) {
-  await manager.saveChain(completedChain);
-}
-```
-
-## MCP (Model Context Protocol) Support
-
-### Current Status
-
-The Model Context Protocol (MCP) currently does not include a standard way to retrieve conversation history from LLM servers. This project includes:
-
-1. **Infrastructure for future support** - When MCP servers implement conversation history retrieval, the integration points are ready
-2. **Manual logging alternative** - A robust manual approach for logging prompts and responses
-3. **Extensible architecture** - Easy to add MCP provider implementations as they become available
-
-### Future MCP Integration
-
-When MCP servers support conversation history:
-
-```typescript
-import { createMCPProvider } from 'gitpromptchain';
-
-const mcpProvider = createMCPProvider({
-  serverUrl: 'http://localhost:3000',
-  authToken: 'your-token',
-  enabled: true
-});
-
-const manager = new PromptChainManager({
-  storageDir: './.gitpromptchain',
-  repoPath: process.cwd(),
-  mcpProvider
-});
-
-// Attempt to import conversation history
-await manager.importFromMCP(sessionId);
+// Save the chain
+const branch = await git.getCurrentBranch();
+const completedChain = await manager.endChain(undefined, branch);
+await manager.saveChain(completedChain);
 ```
 
 ## Data Format
 
-Prompt chains are stored as JSON files in `.gitpromptchain/` directory:
+Chains are stored as JSON in `.gitpromptchain/`:
 
 ```json
 {
@@ -162,30 +108,14 @@ Prompt chains are stored as JSON files in `.gitpromptchain/` directory:
 
 ## Use Cases
 
-### Visual Version Control Systems
-
-Integrate GitPromptChain with visual Git clients (GitHub Desktop, Fork, etc.) to show:
-- Prompt chains alongside commit history
-- File diffs with associated prompts
-- Evolution of code through conversation
-
-### AI-Assisted Development Documentation
-
-- Document how AI tools contributed to your project
-- Review what worked and what didn't
-- Share successful prompting strategies with your team
-
-### Learning and Improvement
-
-- Analyze patterns in successful vs unsuccessful prompts
-- Understand which types of prompts lead to better code
-- Build a knowledge base of effective prompting techniques
+- **Learning Tool** - Analyze which prompts lead to better code
+- **Documentation** - Record how AI contributed to your project
+- **Workflow Analysis** - Understand your AI-assisted development patterns
+- **Team Sharing** - Share successful prompting strategies
 
 ## API Reference
 
 ### PromptChainManager
-
-Main class for managing prompt chains.
 
 #### Methods
 
@@ -196,11 +126,8 @@ Main class for managing prompt chains.
 - `saveChain(chain)` - Save a chain to disk
 - `loadChain(chainId)` - Load a chain from disk
 - `listChains()` - List all stored chains
-- `importFromMCP(sessionId?)` - Import from MCP server (when available)
 
 ### GitIntegration
-
-Utilities for Git operations and file diff extraction.
 
 #### Methods
 
@@ -210,8 +137,6 @@ Utilities for Git operations and file diff extraction.
 - `getCommitDiffs(commitSha)` - Get diffs for a specific commit
 
 ### PromptChainVisualizer
-
-Visualization utilities for displaying prompt chains.
 
 #### Methods
 
@@ -227,27 +152,12 @@ Visualization utilities for displaying prompt chains.
 npm run build
 ```
 
-### Running Locally
+### Running Demo
 
 ```bash
-npm run start
+./demo.sh
 ```
 
 ## License
 
 ISC
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
-## Future Enhancements
-
-- [ ] Web UI for visualizing prompt chains
-- [ ] Integration with popular Git clients
-- [ ] MCP server conversation history retrieval (when available)
-- [ ] Export to various formats (Markdown, HTML, PDF)
-- [ ] Analytics and insights on prompting patterns
-- [ ] Team collaboration features
-- [ ] Integration with CI/CD pipelines
-

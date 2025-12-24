@@ -4,7 +4,7 @@
  * This example shows how to track a simple prompt chain
  */
 
-import { PromptChainManager, GitIntegration, PromptChainVisualizer, createMCPProvider } from '../src/index';
+import { PromptChainManager, GitIntegration, PromptChainVisualizer } from '../src/index';
 import * as path from 'path';
 
 async function basicExample() {
@@ -16,8 +16,7 @@ async function basicExample() {
 
   const manager = new PromptChainManager({
     storageDir,
-    repoPath,
-    mcpProvider: createMCPProvider({ enabled: false })
+    repoPath
   });
 
   const git = new GitIntegration(repoPath);

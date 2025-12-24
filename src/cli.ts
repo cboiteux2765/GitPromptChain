@@ -7,7 +7,6 @@
 import { PromptChainManager } from './core/PromptChainManager';
 import { GitIntegration } from './utils/GitIntegration';
 import { PromptChainVisualizer } from './core/PromptChainVisualizer';
-import { createMCPProvider } from './mcp/MCPProvider';
 import * as path from 'path';
 import * as readline from 'readline';
 
@@ -25,11 +24,8 @@ class GitPromptChainCLI {
   constructor(config: CLIConfig) {
     this.config = config;
     
-    const mcpProvider = createMCPProvider({ enabled: false });
-    
     this.manager = new PromptChainManager({
       storageDir: config.storageDir,
-      mcpProvider,
       repoPath: config.repoPath
     });
 
@@ -61,10 +57,9 @@ class GitPromptChainCLI {
     console.log('3. End current chain and save');
     console.log('4. View a saved chain');
     console.log('5. List all chains');
-    console.log('6. Try importing from MCP server');
-    console.log('7. Exit\n');
+    console.log('6. Exit\n');
 
-    this.rl.question('Enter your choice (1-7): ', async (choice) => {
+    this.rl.question('Enter your choice (1-6): ', async (choice) => {
       await this.handleMenuChoice(choice.trim());
     });
   }
@@ -87,9 +82,6 @@ class GitPromptChainCLI {
         await this.listChains();
         break;
       case '6':
-        await this.tryMCPImport();
-        break;
-      case '7':
         console.log('\nGoodbye!');
         this.rl.close();
         process.exit(0);
@@ -185,22 +177,6 @@ class GitPromptChainCLI {
           console.log(`    ${summary}`);
         }
       }
-    }
-
-    await this.showMenu();
-  }
-
-  private async tryMCPImport(): Promise<void> {
-    console.log('\n⚠️  Note: Current MCP specification does not include conversation history retrieval.');
-    console.log('This feature is a placeholder for future MCP server implementations.\n');
-    
-    const success = await this.manager.importFromMCP();
-    
-    if (success) {
-      console.log('✅ Successfully imported from MCP server');
-    } else {
-      console.log('❌ Failed to import from MCP server');
-      console.log('Consider using the manual prompt logging approach instead.');
     }
 
     await this.showMenu();

@@ -8,16 +8,14 @@ export { PromptChain, PromptStep, FileDiff, PromptChainDocument, PromptChainMeta
 export { PromptChainManager, PromptChainManagerConfig } from './core/PromptChainManager';
 export { PromptChainVisualizer } from './core/PromptChainVisualizer';
 export { GitIntegration } from './utils/GitIntegration';
-export { MCPServerConfig, MCPConversationProvider, createMCPProvider } from './mcp/MCPProvider';
 
 // Example usage:
 /*
-import { PromptChainManager, GitIntegration, createMCPProvider } from 'gitpromptchain';
+import { PromptChainManager, GitIntegration } from 'gitpromptchain';
 
 const manager = new PromptChainManager({
   storageDir: './.gitpromptchain',
-  repoPath: process.cwd(),
-  mcpProvider: createMCPProvider({ enabled: false })
+  repoPath: process.cwd()
 });
 
 await manager.initialize();

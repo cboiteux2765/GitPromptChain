@@ -45,7 +45,7 @@ cd /home/runner/work/GitPromptChain/GitPromptChain
 
 # Use the programmatic API to create a demo chain
 cat > /tmp/create-demo-chain.js << 'EOFJS'
-const { PromptChainManager, GitIntegration, PromptChainVisualizer, createMCPProvider } = require('/home/runner/work/GitPromptChain/GitPromptChain/dist/index.js');
+const { PromptChainManager, GitIntegration, PromptChainVisualizer } = require('/home/runner/work/GitPromptChain/GitPromptChain/dist/index.js');
 const path = require('path');
 
 async function createDemoChain() {
@@ -54,8 +54,7 @@ async function createDemoChain() {
   
   const manager = new PromptChainManager({
     storageDir,
-    repoPath,
-    mcpProvider: createMCPProvider({ enabled: false })
+    repoPath
   });
   
   await manager.initialize();
