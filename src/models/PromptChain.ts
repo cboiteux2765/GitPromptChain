@@ -63,6 +63,8 @@ export interface PromptChainMetadata {
     name: string;
     path: string;
   };
+  /** Optional computed metrics for the chain */
+  metrics?: PromptChainMetrics;
 }
 
 /**
@@ -71,4 +73,36 @@ export interface PromptChainMetadata {
 export interface PromptChainDocument {
   metadata: PromptChainMetadata;
   chain: PromptChain;
+}
+
+/**
+ * Computed metrics for a prompt chain
+ */
+export interface PromptChainMetrics {
+  /** Total duration in milliseconds (start -> end) */
+  durationMs: number;
+  /** Number of steps that resulted in file modifications */
+  modificationSteps: number;
+  /** Unique files changed across all steps */
+  uniqueFilesChanged: number;
+  /** Total lines added across all steps */
+  totalLinesAdded: number;
+  /** Total lines deleted across all steps */
+  totalLinesDeleted: number;
+  /** Prompt statistics */
+  prompts: {
+    /** Sum of prompt character lengths */
+    totalLengthChars: number;
+    /** Average prompt character length */
+    avgLengthChars: number;
+    /** Simple style counts */
+    styleCounts: {
+      /** Prompts ending with '?' */
+      interrogative: number;
+      /** Prompts starting with a verb (heuristic) */
+      imperative: number;
+      /** Other narrative/descriptive prompts */
+      narrative: number;
+    };
+  };
 }

@@ -5,14 +5,17 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "gitpromptchain": "dist/cli.js"
+    "gitpromptchain": "dist/cli.js",
+    "git-promptchain": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
     "start": "npm run build && node dist/cli.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:workflow": "npx ts-node scripts/test-workflow.ts",
+    "demo": "npx ts-node scripts/demo-workflow.ts"
   },
   "keywords": [
     "git",

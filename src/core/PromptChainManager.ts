@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PromptChain, PromptStep, PromptChainDocument, PromptChainMetadata, FileDiff } from '../models/PromptChain';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { computeChainMetrics } from '../utils/ChainMetrics';
 
 export interface PromptChainManagerConfig {
   storageDir: string;
@@ -75,7 +76,8 @@ export class PromptChainManager {
         repository: {
           name: path.basename(this.config.repoPath),
           path: this.config.repoPath
-        }
+        },
+        metrics: computeChainMetrics(chain)
       },
       chain
     };
@@ -86,6 +88,28 @@ export class PromptChainManager {
     await fs.writeFile(filepath, JSON.stringify(document, null, 2));
     console.log(`Saved prompt chain to ${filepath}`);
     
+    // If associated commit SHA exists, also save under commits/<sha>/
+    if (chain.commitSha && chain.commitSha.length > 0) {
+      const commitDir = path.join(this.config.storageDir, 'commits', chain.commitSha);
+      await fs.mkdir(commitDir, { recursive: true });
+      const commitFile = path.join(commitDir, filename);
+      await fs.writeFile(commitFile, JSON.stringify(document, null, 2));
+
+      // Update commit index
+      const indexPath = path.join(this.config.storageDir, 'commit-index.json');
+      let index: Record<string, string[]> = {};
+      try {
+        const raw = await fs.readFile(indexPath, 'utf-8');
+        index = JSON.parse(raw);
+      } catch {
+        // no index yet
+      }
+      const list = new Set<string>(index[chain.commitSha] || []);
+      list.add(chain.chainId);
+      index[chain.commitSha] = Array.from(list);
+      await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
+    }
+
     return filepath;
   }
 
@@ -116,5 +140,26 @@ export class PromptChainManager {
 
   getCurrentChain(): PromptChain | null {
     return this.currentChain;
+  }
+
+  async listChainsByCommit(commitSha: string): Promise<string[]> {
+    const indexPath = path.join(this.config.storageDir, 'commit-index.json');
+    try {
+      const raw = await fs.readFile(indexPath, 'utf-8');
+      const index: Record<string, string[]> = JSON.parse(raw);
+      return index[commitSha] || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async loadChainsByCommit(commitSha: string): Promise<PromptChainDocument[]> {
+    const chainIds = await this.listChainsByCommit(commitSha);
+    const docs: PromptChainDocument[] = [];
+    for (const id of chainIds) {
+      const doc = await this.loadChain(id);
+      if (doc) docs.push(doc);
+    }
+    return docs;
   }
 }
