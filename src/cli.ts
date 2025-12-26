@@ -5,6 +5,8 @@ import { GitIntegration } from './utils/GitIntegration';
 import { PromptChainVisualizer } from './core/PromptChainVisualizer';
 import * as path from 'path';
 import * as readline from 'readline';
+import { LLMTipsGenerator } from './utils/LLMTipsGenerator';
+import { PromptChainDocument } from './models/PromptChain';
 
 interface CLIConfig {
   repoPath: string;
@@ -53,7 +55,7 @@ class GitPromptChainCLI {
     console.log('What would you like to do?');
     
     if (current) {
-      console.log(`\n📝 Active chain: ${current.chainId}`);
+      console.log(`\nActive chain: ${current.chainId}`);
       console.log(`   Steps: ${current.steps.length}`);
       console.log('');
     }
@@ -106,7 +108,7 @@ class GitPromptChainCLI {
   private async startNewChain(): Promise<void> {
     this.rl.question('Enter a summary for this chain (optional): ', async (summary) => {
       const chain = await this.manager.startChain(summary || undefined);
-      console.log(`\n✅ Started new prompt chain: ${chain.chainId}`);
+      console.log(`\nStarted new prompt chain: ${chain.chainId}`);
       await this.showMenu();
     });
   }
@@ -127,22 +129,20 @@ class GitPromptChainCLI {
       }
 
       try {
-        // Capture file diffs as response
         const fileDiffs = await this.gitIntegration.getUncommittedDiffs();
         const response = fileDiffs.length > 0
           ? `Applied changes to ${fileDiffs.length} file(s):\n${fileDiffs.map(d => `  - ${d.filePath}: ${d.linesAdded} additions, ${d.linesDeleted} deletions`).join('\n')}`
           : '[No file changes detected]';
 
-        // Add step to chain (keep chain active)
         await this.manager.addStep(prompt, response, fileDiffs);
 
-        console.log(`\n✅ Step added!`);
+        console.log(`\nStep added!`);
         console.log(`   Chain: ${current.chainId}`);
         console.log(`   Total steps: ${current.steps.length}`);
         if (fileDiffs.length > 0) {
           console.log(`   Files changed: ${fileDiffs.length}`);
         }
-        console.log(`\n💡 Tip: Use 'save' to finalize and save this chain, or 'add' to continue adding steps.`);
+        console.log(`\nTip: Use 'save' to finalize and save this chain, or 'add' to continue adding steps.`);
         
         await this.showMenu();
       } catch (error) {
@@ -168,7 +168,7 @@ class GitPromptChainCLI {
       if (completedChain) {
         await this.manager.saveChain(completedChain);
 
-        console.log(`\n✅ Chain saved!`);
+        console.log(`\nChain saved!`);
         console.log(`   Chain ID: ${completedChain.chainId}`);
         console.log(`   Total steps: ${completedChain.steps.length}`);
         console.log(`   Commit: ${commitSha}`);
@@ -227,6 +227,7 @@ class GitPromptChainCLI {
       if (selectedChain) {
         this.displayMetricsTable(selectedChain.doc);
         console.log('\n' + PromptChainVisualizer.visualizeChain(selectedChain.doc));
+        await this.offerLLMTips(selectedChain.doc);
       } else {
         console.log('\nChain not found.');
       }
@@ -267,6 +268,7 @@ class GitPromptChainCLI {
             if (doc) {
               this.displayMetricsTable(doc);
               console.log('\n' + PromptChainVisualizer.visualizeChain(doc));
+              await this.offerLLMTips(doc);
             }
           }
           await this.showMenu();
@@ -281,7 +283,7 @@ class GitPromptChainCLI {
   private displayMetricsTable(doc: any): void {
     const m = doc.metadata?.metrics;
     if (!m) {
-      console.log('\n⚠️  No metrics available for this chain\n');
+      console.log('\nNo metrics available for this chain\n');
       return;
     }
 
@@ -314,71 +316,47 @@ class GitPromptChainCLI {
     console.log(`║ Descriptions:       ${this.pad(String(m.prompts.styleCounts.narrative), 36)} ║`);
     console.log('╚════════════════════════════════════════════════════════════╝\n');
     
-    this.displayPromptingTips(m, chain);
   }
 
-  private displayPromptingTips(metrics: any, chain: any): void {
-    console.log('💡 Prompting Tips Based on Your Metrics:\n');
-    
-    // Tip 1: Prompt length analysis
-    if (metrics.prompts.avgLengthChars < 20) {
-      console.log('   📏 Prompt Length: Your prompts are quite SHORT (avg ' + metrics.prompts.avgLengthChars + ' chars)');
-      console.log('      → Try adding more context and specifics for better AI responses');
-      console.log('      → Example: Instead of "Fix bug", try "Fix the authentication bug where');
-      console.log('                 tokens expire too quickly"\n');
-    } else if (metrics.prompts.avgLengthChars > 200) {
-      console.log('   📏 Prompt Length: Your prompts are quite LONG (avg ' + metrics.prompts.avgLengthChars + ' chars)');
-      console.log('      → Consider breaking complex requests into smaller, focused steps');
-      console.log('      → This helps the AI provide more targeted solutions\n');
+  private showBuiltinTips(metrics: any, chain: any): void {
+    console.log('Prompting tips based on your metrics:\n');
+    const avg = metrics.prompts.avgLengthChars;
+    if (avg < 20) {
+      console.log('   Prompt length: Your prompts are quite short (avg ' + avg + ' chars)');
+      console.log('      → Add more context and specifics for better responses\n');
+    } else if (avg > 200) {
+      console.log('   Prompt length: Your prompts are quite long (avg ' + avg + ' chars)');
+      console.log('      → Break complex requests into smaller, focused steps\n');
     } else {
-      console.log('   ✅ Prompt Length: Great! (avg ' + metrics.prompts.avgLengthChars + ' chars is ideal)\n');
+      console.log('   Prompt length: Great (avg ' + avg + ' chars is ideal)\n');
     }
-    
-    // Tip 2: Prompt style analysis
-    const totalPrompts = metrics.prompts.styleCounts.interrogative + 
-                        metrics.prompts.styleCounts.imperative + 
-                        metrics.prompts.styleCounts.narrative;
-    const questionRatio = totalPrompts > 0 ? metrics.prompts.styleCounts.interrogative / totalPrompts : 0;
-    const commandRatio = totalPrompts > 0 ? metrics.prompts.styleCounts.imperative / totalPrompts : 0;
-    
-    if (questionRatio > 0.7) {
-      console.log('   ❓ Prompt Style: You ask many QUESTIONS (' + Math.round(questionRatio * 100) + '%)');
-      console.log('      → Questions are good for exploration, but try direct commands for action');
-      console.log('      → Examples: "Add...", "Update...", "Fix...", "Create...", "Refactor..."\n');
-    } else if (commandRatio > 0.7) {
-      console.log('   ✅ Prompt Style: Excellent! You use DIRECT COMMANDS (' + Math.round(commandRatio * 100) + '%)');
-      console.log('      → Command-style prompts often get faster, more actionable results\n');
+
+    const total = metrics.prompts.styleCounts.interrogative + metrics.prompts.styleCounts.imperative + metrics.prompts.styleCounts.narrative;
+    const q = total > 0 ? metrics.prompts.styleCounts.interrogative / total : 0;
+    const c = total > 0 ? metrics.prompts.styleCounts.imperative / total : 0;
+    if (q > 0.7) {
+      console.log('   Prompt style: You ask many questions (' + Math.round(q * 100) + '%)');
+      console.log('      → Try more direct commands for action (Add/Update/Fix)\n');
+    } else if (c > 0.7) {
+      console.log('   Prompt style: You use direct commands (' + Math.round(c * 100) + '%)\n');
     } else {
-      console.log('   ⚖️  Prompt Style: Good mix of questions and commands!');
-      console.log('      → Balance helps: questions for learning, commands for action\n');
+      console.log('   Prompt style: Good mix of questions and commands\n');
     }
-    
-    // Tip 3: Modification efficiency
+
     if (chain.steps.length > 0) {
       const changeRate = metrics.modificationSteps / chain.steps.length;
       if (changeRate < 0.3) {
-        console.log('   🎯 Results: Only ' + Math.round(changeRate * 100) + '% of prompts resulted in changes');
-        console.log('      → Be more specific about WHAT to modify and WHERE');
-        console.log('      → Include file names or specific code sections when possible\n');
+        console.log('   Results: Only ' + Math.round(changeRate * 100) + '% of prompts resulted in changes');
+        console.log('      → Be specific about WHAT to modify and WHERE\n');
       } else if (changeRate > 0.8) {
-        console.log('   ✅ Results: Excellent! ' + Math.round(changeRate * 100) + '% of prompts led to changes');
-        console.log('      → Your prompts are clear and actionable\n');
+        console.log('   Results: ' + Math.round(changeRate * 100) + '% of prompts led to changes\n');
       }
     }
-    
-    // Tip 4: Code impact
+
     if (metrics.uniqueFilesChanged > 5) {
-      console.log('   📁 Scope: You modified ' + metrics.uniqueFilesChanged + ' files in this chain');
-      console.log('      → Large changes are fine, but consider smaller focused chains');
-      console.log('      → This makes it easier to review and revert if needed\n');
+      console.log('   Scope: You modified ' + metrics.uniqueFilesChanged + ' files');
+      console.log('      → Consider smaller focused chains for easier review\n');
     }
-    
-    // Tip 5: General best practices
-    console.log('   📚 Best Practices:');
-    console.log('      • Start with "what" you want, then add "why" for context');
-    console.log('      • Include constraints (language, framework, patterns to follow)');
-    console.log('      • Reference specific files/functions for targeted changes');
-    console.log('      • Break complex features into multiple prompt steps\n');
   }
 
   private pad(text: string, length: number): string {
@@ -395,6 +373,46 @@ class GitPromptChainCLI {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m ${secs}s`;
+  }
+
+  private async offerLLMTips(doc: PromptChainDocument): Promise<void> {
+    const metrics = doc.metadata?.metrics;
+    if (!metrics) {
+      return;
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    const canUseLLM = Boolean(apiKey);
+
+    const promptMsg = canUseLLM
+      ? "Generate AI-powered prompting tips based on these metrics? (y/N): "
+      : "AI tips unavailable (set OPENAI_API_KEY). Show built-in tips instead? (y/N): ";
+
+    await new Promise<void>((resolve) => {
+      this.rl.question("\n" + promptMsg, async (answer) => {
+        const yes = answer.trim().toLowerCase() === 'y';
+        if (!yes) {
+          resolve();
+          return;
+        }
+
+        if (canUseLLM) {
+          try {
+            const text = await LLMTipsGenerator.generateTips(metrics, doc.chain, {
+              model: process.env.GITPROMPTCHAIN_LLM_MODEL || 'gpt-4o-mini',
+            });
+            console.log("\nAI prompting tips:\n" + text.trim() + "\n");
+          } catch (err) {
+            console.log("\nFailed to fetch AI tips: " + (err instanceof Error ? err.message : String(err)));
+            console.log("\nShowing built-in tips instead:\n");
+            this.showBuiltinTips(metrics, doc.chain);
+          }
+        } else {
+          this.showBuiltinTips(metrics, doc.chain);
+        }
+        resolve();
+      });
+    });
   }
 }
 

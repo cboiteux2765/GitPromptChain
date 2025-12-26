@@ -1,9 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * Quick demo showing the improved CLI workflow
- */
-
 import { PromptChainManager } from '../src/core/PromptChainManager';
 import { GitIntegration } from '../src/utils/GitIntegration';
 import * as path from 'path';
@@ -13,8 +9,8 @@ import * as os from 'os';
 async function demo() {
   const tempDir = path.join(os.tmpdir(), `gitpromptchain-demo-${Date.now()}`);
   
-  console.log('🎬 GitPromptChain CLI Demo\n');
-  console.log('This demo shows the new workflow:\n');
+  console.log('GitPromptChain CLI demo\n');
+  console.log('This demo shows the workflow:\n');
   console.log('  1. Start a chain');
   console.log('  2. Add multiple steps (chain stays active)');
   console.log('  3. Save when done (finalizes the chain)\n');
@@ -27,7 +23,7 @@ async function demo() {
 
   console.log('Step 1: Start a new chain\n');
   const chain = await manager.startChain('Demo: Authentication Feature');
-  console.log(`✅ Chain started: ${chain.chainId}`);
+  console.log(`Chain started: ${chain.chainId}`);
   console.log(`   Summary: "${chain.summary}"`);
   console.log(`   Steps: ${chain.steps.length}\n`);
 
@@ -45,10 +41,10 @@ async function demo() {
       }
     ]
   );
-  console.log(`✅ Step added!`);
+  console.log(`Step added!`);
   console.log(`   Chain: ${chain.chainId}`);
   console.log(`   Total steps: ${chain.steps.length}`);
-  console.log(`   💡 Chain is still ACTIVE - you can add more steps\n`);
+  console.log(`   Chain is still ACTIVE - you can add more steps\n`);
 
   console.log('Step 3: Add second prompt (chain still active)\n');
   await manager.addStep(
@@ -64,10 +60,10 @@ async function demo() {
       }
     ]
   );
-  console.log(`✅ Step added!`);
+  console.log(`Step added!`);
   console.log(`   Chain: ${chain.chainId}`);
   console.log(`   Total steps: ${chain.steps.length}`);
-  console.log(`   💡 Still ACTIVE - add more or save when ready\n`);
+  console.log(`   Still ACTIVE - add more or save when ready\n`);
 
   console.log('Step 4: Add third prompt\n');
   await manager.addStep(
@@ -83,7 +79,7 @@ async function demo() {
       }
     ]
   );
-  console.log(`✅ Step added!`);
+  console.log(`Step added!`);
   console.log(`   Total steps: ${chain.steps.length}\n`);
 
   console.log('Step 5: Save and finalize the chain\n');
@@ -96,7 +92,7 @@ async function demo() {
     await manager.saveChain(completed);
     const loaded = await manager.loadChain(completed.chainId);
     
-    console.log(`✅ Chain saved!`);
+    console.log(`Chain saved!`);
     console.log(`   Chain ID: ${completed.chainId}`);
     console.log(`   Total steps: ${completed.steps.length}`);
     console.log(`   Commit: ${sha.substring(0, 8)}`);
@@ -104,8 +100,7 @@ async function demo() {
 
     if (loaded?.metadata.metrics) {
       const m = loaded.metadata.metrics;
-      
-      // Display beautiful metrics table
+
       console.log('╔════════════════════════════════════════════════════════════╗');
       console.log('║                    CHAIN METRICS                           ║');
       console.log('╠════════════════════════════════════════════════════════════╣');
@@ -133,9 +128,8 @@ async function demo() {
       console.log(`║ Commands/Actions:   ${pad(String(m.prompts.styleCounts.imperative), 36)} ║`);
       console.log(`║ Descriptions:       ${pad(String(m.prompts.styleCounts.narrative), 36)} ║`);
       console.log('╚════════════════════════════════════════════════════════════╝\n');
-      
-      // Provide prompting tips based on metrics
-      console.log('💡 Prompting Tips:\n');
+
+      console.log('Prompting tips:\n');
       
       if (m.prompts.avgLengthChars < 20) {
         console.log('   • Your prompts are quite short. Try adding more context for better results.');
@@ -165,9 +159,9 @@ async function demo() {
     }
   }
 
-  console.log('🧹 Cleaning up...');
+  console.log('Cleaning up...');
   await fs.rm(tempDir, { recursive: true, force: true });
-  console.log('✅ Demo complete!\n');
+  console.log('Demo complete!\n');
 }
 
 function pad(text: string, length: number): string {

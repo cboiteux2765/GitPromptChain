@@ -15,6 +15,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:workflow": "npx ts-node scripts/test-workflow.ts",
+    "test:llm": "npx ts-node scripts/test-llm-tips.ts",
     "demo": "npx ts-node scripts/demo-workflow.ts"
   },
   "keywords": [
@@ -37,6 +38,7 @@
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",
+    "openai": "^4.70.0",
     "simple-git": "^3.30.0",
     "uuid": "^9.0.1"
   }

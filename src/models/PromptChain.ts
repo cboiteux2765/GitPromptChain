@@ -63,7 +63,7 @@ export interface PromptChainMetadata {
     name: string;
     path: string;
   };
-  /** Optional computed metrics for the chain */
+  /** Computed metrics for the chain */
   metrics?: PromptChainMetrics;
 }
 
