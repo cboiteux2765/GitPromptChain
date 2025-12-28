@@ -1,5 +1,3 @@
-gitpromptchain
-git promptchain
 # GitPromptChain
 
 Track prompt chains, responses, and related git diffs for each commit.
